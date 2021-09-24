@@ -1,0 +1,668 @@
+---
+pagetitle: The simple linear regression model and the OLS estimator
+output: 
+  revealjs::revealjs_presentation:
+    incremental: false
+    theme: solarized
+    self_contained: false
+    reveal_plugins: ["chalkboard"]
+    # reveal_plugins: ["menu"]
+    highlight: pygments
+    center: true
+    transition: none
+    background_transition: none 
+    reveal_options:
+      chalkboard:
+        theme: whiteboard
+        toggleNotesButton: true
+        toggleChalkboardButton: true
+      # menu:
+      #   numbers: true
+      # slideNumber: true
+      # previewLinks: false
+    fig_caption: true
+    pandoc_args:
+    - --indented-code-classes
+    - lineNumbers
+    css: mystyle.css
+    
+--- 
+
+<section>
+
+<h1>The simple linear regression model and the OLS estimator</h1>
+
+Based on Stock and Watson, ch. 4
+
+<br>
+
+<h2>[Jesper Bagger](mailto:jesper.bagger@rhul.ac.uk)</h2>
+
+<h3>EC2208 | Royal Holloway | 2021/22</h3>
+
+</section>
+
+
+```{r results='asis', echo=FALSE, include=FALSE}
+library(AER) # include Applied Econometrics with R package; contains many datasets
+data(CASchools) # Load CASchools data
+# Generate a couple of useful variables
+CASchools$STR <- CASchools$students/CASchools$teachers  # Student-teacher ratio
+CASchools$Score <- (CASchools$read + CASchools$math)/2  # Student test score
+```
+
+# A simple linear regression model of test scores and student-teacher ratios
+
+
+## The population regression function
+
+- Suppose the relationship between $Score$ and $STR$ that holds, on average, in the population is a linear function
+
+  $$\mathrm{E}(Score|STR) = \beta_0 + \beta_1 STR$$
+
+- $\mathrm{E}(Score|STR)$ is the population regression function, where $\beta_0$ is the intercept and $\beta_1$ is the slope
+
+  <!-- - $\beta_0$ is the intercept parameter -->
+
+  <!-- - $\beta_1$ is the slope parameter -->
+
+- We can, under certain conditions to be spelled out, use the regression function to:
+
+  - Predict $Score$ from $STR$
+  
+  - Evaluate the effect of changes to $STR$ on $Score$
+
+<!-- ## The population regression function -->
+
+<!-- $$\mathrm{E}(Score|STR) = 695 - 2 STR$$ -->
+<!-- ```{r echo=FALSE, error=FALSE, warning=FALSE} -->
+<!-- # Define population regression function (of x) as f(x) = 695 - 2*x -->
+<!-- popregfct <- function(x){695-2*x}  -->
+<!-- # Plot a curve of popregfct  -->
+<!-- curve(popregfct,  -->
+<!--       from = 5, to = 35, # Evaluate in x values from 5 to 35 -->
+<!--       xlab = "Student-teacher ratio", # Label on x-axis -->
+<!--       ylab = "Test score", # Label on y-axis -->
+<!--       xlim = c(10, 30),  # Range of x-axis (from 10 to 30) -->
+<!--       ylim = c(600, 720), # Range of y-axis (from 600 to 720) -->
+<!--       lwd = 3, # Set linewidth to 3 -->
+<!--       col = "blue") # Make the plotted line blue -->
+<!-- ``` -->
+
+<!-- ## Creating and plotting a function in R -->
+
+<!-- ```{r echo=TRUE, eval = FALSE, error=FALSE, warning=FALSE} -->
+<!-- # Define population regression function (of x) as f(x) = 695 - 2*x -->
+<!-- popregfct <- function(x){695-2*x}  -->
+<!-- # Plot a curve of popregfct  -->
+<!-- curve(popregfct,  -->
+<!--       from = 5, to = 35, # Evaluate in x values from 5 to 35 -->
+<!--       xlab = "Student-teacher ratio", # Label on x-axis -->
+<!--       ylab = "Test score", # Label on y-axis -->
+<!--       xlim = c(10, 30),  # Range of x-axis (from 10 to 30) -->
+<!--       ylim = c(600, 720), # Range of y-axis (from 600 to 720) -->
+<!--       lwd = 3, # Set linewidth to 3 -->
+<!--       col = "blue") # Make the plotted line blue -->
+<!-- ``` -->
+
+## The simple linear regression model
+
+$$Score = \underset{\mathrm{E}(Score|STR)}{\underbrace{\beta_0 + \beta_1 STR}} + u$$
+
+- The error term $u$ is the error made when predicting $Score$ from $STR$ using $\mathrm{E}(Score|STR)$
+
+- $Score$ is called the dependent variable, $STR$ is called the regressor/independent variable
+
+<!-- - Problem: $\beta_0$ and $\beta_1$ are **unknown** -->
+
+
+
+<!-- ## Errors -->
+
+<!-- - Predictions using $\mathrm{E}(Score|STR)$ involve errors: -->
+
+<!--   $$u = Score - \mathrm{E}(Score|STR)$$ -->
+
+<!-- - The error $u$ contains all the determinants of $Score$ that are not $STR$ (what might those be?) -->
+
+
+## Predictions and errors
+
+```{r echo=FALSE, error=FALSE, warning=FALSE}
+# Define population regression function (of x) as f(x) = 695 - 2*x
+popregfct <- function(x){695-2*x} 
+# Plot a curve of popregfct 
+curve(popregfct, 
+      from = 5, to = 35, # Evaluate in x values from 5 to 35
+      xlab = "Student-teacher ratio", # Label on x-axis
+      ylab = "Test score", # Label on y-axis
+      xlim = c(10, 30),  # Range of x-axis (from 10 to 30)
+      ylim = c(600, 720), # Range of y-axis (from 600 to 720)
+      lwd = 3, # Set linewidth to 3
+      col = "blue") # Make the plotted line blue
+# Connect points (24,popregfct(24)) and (24,676.85) by an arrow
+arrows(x0 = 24, y0 = popregfct(24), x1 = 24, y1 = 676.85, 
+       code = 3, # Arrow head in both ends
+       lwd = 3, # Set linewidth to 3
+       col = "lightblue") # Make arrow lightblue
+points(24,676.85, # Plot data-point (24,676.85)
+       col = "blue") # Plot data-point in blue
+# Connect points (15.25,popregfct(15.25)) and (15.25,635.45) by an arrow
+arrows(x0 = 15.25, y0 = popregfct(15.25), x1 = 15.25, y1 = 635.45, 
+       code = 3, # Arrow head in both ends
+       lwd = 3, # Set linewidth to 3
+       col = "lightblue") # Make arrow lightblue
+points(15.25,635.45, # Plot data-point (15,635.45)
+       col = "blue") # Plot data-point in blue
+```
+
+## Creating and plotting a function in R
+
+```{r echo=TRUE, eval = FALSE, error=FALSE, warning=FALSE}
+# Define population regression function (of x) as f(x) = 695 - 2*x
+popregfct <- function(x){695-2*x} 
+# Plot a curve of popregfct 
+curve(popregfct, 
+      from = 5, to = 35, # Evaluate in x values from 5 to 35
+      xlab = "Student-teacher ratio", # Label on x-axis
+      ylab = "Test score", # Label on y-axis
+      xlim = c(10, 30),  # Range of x-axis (from 10 to 30)
+      ylim = c(600, 720), # Range of y-axis (from 600 to 720)
+      lwd = 3, # Set linewidth to 3
+      col = "blue") # Make the plotted line blue
+```
+
+
+<!-- ## Plot points and arrows in R -->
+
+<!-- ```{r echo=TRUE, eval = FALSE, error=FALSE, warning=FALSE} -->
+<!-- # Plot a curve of popregfct  -->
+<!-- curve(popregfct,  -->
+<!--       from = 5, to = 35, # Evaluate in x values from 5 to 35 -->
+<!--       xlab = "Student-teacher ratio", # Label on x-axis -->
+<!--       ylab = "Test score", # Label on y-axis -->
+<!--       xlim = c(10, 30),  # Range of x-axis (from 10 to 30) -->
+<!--       ylim = c(600, 720), # Range of y-axis (from 600 to 720) -->
+<!--       lwd = 3, # Set linewidth to 3 -->
+<!--       col = "blue") # Make the plotted line blue -->
+<!-- # Connect points (15.25,popregfct(15.25)) and (15.25,635.45) by an arrow -->
+<!-- arrows(x0 = 15.25, y0 = popregfct(15.25), x1 = 15.25, y1 = 635.45,  -->
+<!--        code = 3, # Arrow head in both ends -->
+<!--        lwd = 3, # Set linewidth to 3 -->
+<!--        col = "lightblue") # Make arrow lightblue -->
+<!-- points(15.25,635.45, # Plot data-point (15,635.45) -->
+<!--        col = "blue") # Plot data-point in blue -->
+<!-- ``` -->
+
+
+<!-- ## Errors -->
+
+<!-- ```{r echo=FALSE, error=FALSE, warning=FALSE, out.width = "70%"} -->
+<!-- # Scatter plot of Score against STR -->
+<!-- plot(CASchools$STR,CASchools$Score,  -->
+<!--      col = "blue", # Color of data points -->
+<!--      xlab = "Student-teacher ratio",  # Label on x-axis -->
+<!--      ylab = "Test score",   # Label on y-axis -->
+<!--      xlim = c(10, 30),  # Range of x-axis (from 10 to 30) -->
+<!--      ylim = c(600, 720)) # Range of y-axis (from 600 to 720) -->
+<!-- # Add line with intercept 713 and slope -3 to the plot  -->
+<!-- abline(mean(CASchools$Score)+3*mean(CASchools$STR),-3, -->
+<!--        col = "red", # Make the line red -->
+<!--        lwd = 3) # Set linewidth to 3 -->
+<!-- points(24,676.85, # Re-plot data-point (24,676.85) -->
+<!--        col = "blue", # Re-plot data-point in blue -->
+<!--        lwd = 5) # ... but make line thicker -->
+<!-- # Connect points (24,641) and (24,676.85) by a line -->
+<!-- lines(x = c(24,24),y = c(641,676.85),  -->
+<!--        col = "green", # Make the line green -->
+<!--        lwd = 3) # Set linewidth to 3 -->
+<!-- points(15,635.45, # Re-plot data-point (15,635.45) -->
+<!--        col = "blue", # Re-plot data-point in blue -->
+<!--        lwd = 5) # ... but make line thicker -->
+<!-- # Connect points (15,668) and (15,635.45) by a line -->
+<!-- lines(x = c(15,15),y = c(668,635.45), -->
+<!--        col = "green", # Make the line green -->
+<!--        lwd = 3) # Set linewidth to 3 -->
+<!-- ``` -->
+
+<!-- ## Highlighting and connecting points in an R plot -->
+
+<!-- $$error = Score - (713 - 3 STR)$$ -->
+
+<!-- ```{r echo=TRUE, eval = FALSE, error=FALSE, warning=FALSE, out.width = "70%"} -->
+<!-- # Scatter plot of Score against STR -->
+<!-- plot(CASchools$STR,CASchools$Score,  -->
+<!--      col = "blue", # Color of data points -->
+<!--      xlab = "Student-teacher ratio",  # Label on x-axis -->
+<!--      ylab = "Test score",   # Label on y-axis -->
+<!--      xlim = c(10, 30),  # Range of x-axis (from 10 to 30) -->
+<!--      ylim = c(600, 720)) # Range of y-axis (from 600 to 720) -->
+<!-- # Add line with intercept 713 and slope -3 to the plot  -->
+<!-- abline(713,-3, -->
+<!--        col = "red", # Make the line red -->
+<!--        lwd = 3) # Set linewidth to 3 -->
+<!-- points(24,676.85, # Re-plot data-point (24,676.85) -->
+<!--        col = "blue", # Re-plot data-point in blue -->
+<!--        lwd = 5) # ... but make line thicker -->
+<!-- # Connect points (24,641) and (24,676.85) by a line -->
+<!-- lines(x = c(24,24),y = c(641,676.85),  -->
+<!--        col = "green", # Make the line green -->
+<!--        lwd = 3) # Set linewidth to 3 -->
+<!-- points(15,635.45, # Re-plot data-point (15,635.45) -->
+<!--        col = "blue", # Re-plot data-point in blue -->
+<!--        lwd = 5) # ... but make line thicker -->
+<!-- # Connect points (15,668) and (15,635.45) by a line -->
+<!-- lines(x = c(15,15),y = c(668,635.45), -->
+<!--        col = "green", # Make the line green -->
+<!--        lwd = 3) # Set linewidth to 3 -->
+<!-- ``` -->
+
+<!-- ## The simple linear regression model -->
+
+<!-- $$Score = \underset{\mathrm{E}(Score|STR)}{\underbrace{\beta_0 + \beta_1 STR}} + u$$ -->
+
+<!-- - $Score$ is the **dependent variable**  -->
+
+<!-- - $STR$ is the **regressor**  -->
+
+<!-- - $u$ is the **error term** -->
+
+<!-- - Problem: $\beta_0$ and $\beta_1$ are **unknown** -->
+
+
+
+
+
+
+
+
+
+<!-- ## "Best" line? -->
+
+<!-- $$\mathrm{E}(Score|STR) = 654$$ -->
+
+<!-- ```{r echo=FALSE, error=FALSE, warning=FALSE, out.width = "70%"} -->
+<!-- # Scatter plot of Score against STR -->
+<!-- plot(CASchools$STR,CASchools$Score,  -->
+<!--      col = "blue", # Color of data points -->
+<!--      xlab = "Student-teacher ratio",  # Label on x-axis -->
+<!--      ylab = "Test score",   # Label on y-axis -->
+<!--      xlim = c(10, 30),  # Range of x-axis (from 10 to 30) -->
+<!--      ylim = c(600, 720)) # Range of y-axis (from 600 to 720) -->
+<!-- # Add line with intercept 713 and slope -3 to the plot  -->
+<!-- abline(mean(CASchools$Score)+3*mean(CASchools$STR),-3, -->
+<!--        col = "red", # Make the line red -->
+<!--        lwd = 3) # Set linewidth to 3 -->
+<!-- # Add line with intercept 595 and slope 3 to the plot  -->
+<!-- abline(mean(CASchools$Score)-3*mean(CASchools$STR),3, -->
+<!--        col = "green", # Make the line green -->
+<!--        lwd = 3) # Set linewidth to 3 -->
+<!-- # Add line with intercept 654 and slope 0 to the plot  -->
+<!-- abline(mean(CASchools$Score)-0*mean(CASchools$STR),0, -->
+<!--        col = "orange", # Make the line green -->
+<!--        lwd = 3) # Set linewidth to 3 -->
+<!-- ``` -->
+
+<!-- # The simple linear regression model -->
+
+<!-- ## The simple linear regression model -->
+
+<!-- - Let $Y$ be the random variable we want to model as a function of another random variable $X$; suppose -->
+
+<!--   $$\mathrm{E}(Y|X) = \beta_0 + \beta_1 X$$ -->
+
+<!-- - Let $u \equiv Y - \mathrm{E}(Y|X)$ be the error made when predicting $Y$ by its conditional mean -->
+
+<!--   <div class="box"> -->
+<!--   $$Y = \beta_0 + \beta_1 X + u$$ -->
+<!--   </div> -->
+
+<!-- - $u$ contains **everything** that determines $Y$ that is **not** $X$ -->
+
+
+<!-- ## Linear regression terminology -->
+
+<!-- <div class="box"> -->
+<!-- $$Y = \beta_0 + \beta_1 X + u$$ -->
+<!-- </div> -->
+
+<!-- - $Y$ is the **dependent variable**; $X$ is the **regressor**; $u$ is the **error term** -->
+
+<!-- - $\mathrm{E}(Y|X) = \beta_0 + \beta_1 X$ is the **population regression function**, involving **population parameters** $\beta_0$ and $\beta_1$ -->
+
+<!--   - $\beta_0$ is the **intercept** -->
+
+<!--   - $\beta_1$ is the **slope parameter** -->
+
+<!-- - The population parameters $\beta_0$ and $\beta_1$ are **unknown** -->
+  
+# The estimation problem
+
+## The estimation problem
+
+- Problem: $\beta_0$ and $\beta_1$ are unknown
+
+- Estimation: learn about $\beta_0$ and $\beta_1$ from random sample of data from the population; data is
+
+  $$(Score_i,STR_i; i=1,2,...,n)$$
+
+- Each data point $i$ follows the population regression
+
+  $$Score_i = \beta_0 + \beta_1 STR_i + u_i$$
+
+## Load some data into R
+
+```{r, echo=TRUE, eval=FALSE, error=FALSE, warning=FALSE}
+library(AER) # include Applied Econometrics with R package; contains many datasets
+data(CASchools) # Load CASchools data
+# Generate a couple of useful variables
+CASchools$STR <- CASchools$students/CASchools$teachers  # Student-teacher ratio
+CASchools$Score <- (CASchools$read + CASchools$math)/2  # Student test score
+```
+  
+## Test scores and student-teacher ratio data
+
+```{r echo=FALSE, error=FALSE, warning=FALSE}
+# Scatter plot of Score against STR
+plot(CASchools$STR,CASchools$Score, 
+     col = "blue", # Color of data points
+     xlab = "Student-teacher ratio",  # Label on x-axis
+     ylab = "Test score",   # Label on y-axis
+     xlim = c(10, 30),  # Range of x-axis (from 10 to 30)
+     ylim = c(600, 720)) # Range of y-axis (from 600 to 720)
+# Add line with intercept 695 and slope -2 to the plot 
+abline(695,-2, 
+       col = "gray", # Make the line gray
+       lwd = 3) # Set linewidth to 3
+```
+
+## Adding a line to a plot in R
+
+```{r echo=TRUE, eval=FALSE, error=FALSE, warning=FALSE}
+# Scatter plot of Score against STR
+plot(CASchools$STR,CASchools$Score, 
+     col = "blue", # Color of data points
+     xlab = "Student-teacher ratio",  # Label on x-axis
+     ylab = "Test score",   # Label on y-axis
+     xlim = c(10, 30),  # Range of x-axis (from 10 to 30)
+     ylim = c(600, 720)) # Range of y-axis (from 600 to 720)
+# Add line with intercept 695 and slope -2 to the plot 
+abline(695,-2, 
+       col = "gray", # Make the line gray
+       lwd = 3) # Set linewidth to 3
+```
+
+  
+<!-- ## Sample regression function -->
+
+<!-- - We refer to the OLS estimators of $\beta_0$ and $\beta_1$ as $\widehat{\beta}_0$ and $\widehat{\beta}_1$  -->
+
+<!--   An estimator is a rule that tells you how to compute estimates from a sample: estimates are known quantities. -->
+
+<!-- - The **sample regression function** obtains by replacing $\beta_0$ and $\beta_1$ by $\widehat{\beta}_0$ and $\widehat{\beta}_1$ in the population regression function  -->
+
+<!--   $$\widehat{\beta}_0 + \widehat{\beta}_1 STR$$  -->
+
+
+
+## "Best" line through the data?
+
+Sample regression function $= 713 - 3 STR$
+```{r echo=FALSE, error=FALSE, warning=FALSE}
+# Scatter plot of Score against STR
+plot(CASchools$STR,CASchools$Score, 
+     col = "blue", # Color of data points
+     xlab = "Student-teacher ratio",  # Label on x-axis
+     ylab = "Test score",   # Label on y-axis
+     xlim = c(10, 30),  # Range of x-axis (from 10 to 30)
+     ylim = c(600, 720)) # Range of y-axis (from 600 to 720)
+# Add line with intercept 695 and slope -2 to the plot 
+abline(695,-2, 
+       col = "gray", # Make the line gray
+       lwd = 3) # Set linewidth to 3
+# Add line with intercept 713 and slope -3 to the plot 
+abline(mean(CASchools$Score)+3*mean(CASchools$STR),-3,
+       col = "red", # Make the line red
+       lwd = 3) # Set linewidth to 3
+```
+
+
+## Best line through the data?
+
+Sample regression function $= 595 + 3 STR$
+```{r echo=FALSE, error=FALSE, warning=FALSE}
+# Scatter plot of Score against STR
+plot(CASchools$STR,CASchools$Score, 
+     col = "blue", # Color of data points
+     xlab = "Student-teacher ratio",  # Label on x-axis
+     ylab = "Test score",   # Label on y-axis
+     xlim = c(10, 30),  # Range of x-axis (from 10 to 30)
+     ylim = c(600, 720)) # Range of y-axis (from 600 to 720)
+# Add line with intercept 695 and slope -2 to the plot 
+abline(695,-2, 
+       col = "gray", # Make the line gray
+       lwd = 3) # Set linewidth to 3
+# Add line with intercept 713 and slope -3 to the plot 
+abline(mean(CASchools$Score)+3*mean(CASchools$STR),-3,
+       col = "red", # Make the line red
+       lwd = 3) # Set linewidth to 3
+# Add line with intercept 595 and slope 3 to the plot 
+abline(mean(CASchools$Score)-3*mean(CASchools$STR),3,
+       col = "green", # Make the line green
+       lwd = 3) # Set linewidth to 3
+```
+
+
+## Fitted values and residuals
+
+- Let $\widehat{\beta}_0$ and $\widehat{\beta}_1$ be your guesses (estimates) of the values of $\beta_0$ and $\beta_1$. For example, $\widehat{\beta}_0 = 713$ and $\widehat{\beta}_1 = -3$
+
+- Given $\widehat{\beta}_0$ and $\widehat{\beta}_1$, the fitted value $\widehat{Score}_i$ is:
+
+  $$\widehat{Score}_i = \hat{\beta}_0 + \hat{\beta}_1 STR_i$$
+  
+- The residual $\widehat{u}_i$ is:
+
+  $$\widehat{u}_i = Score_i - \widehat{Score}_i$$
+- There is a fitted value and a residual for each observation $i = 1,2,...,n$ in the sample
+<!-- - $\hat{Score}_i$ is the sample counterpart to $\mathrm{E}(Score_i|STR_i)$ -->
+
+<!-- ## Fitted values and residuals -->
+
+<!-- $$\hat{Score}_i = 713 - 3 STR_i$$ -->
+<!-- ```{r echo=FALSE, error=FALSE, warning=FALSE} -->
+<!-- # Scatter plot of Score against STR -->
+<!-- plot(CASchools$STR,CASchools$Score,  -->
+<!--      col = "blue", # Color of data points -->
+<!--      xlab = "Student-teacher ratio",  # Label on x-axis -->
+<!--      ylab = "Test score",   # Label on y-axis -->
+<!--      xlim = c(10, 30),  # Range of x-axis (from 10 to 30) -->
+<!--      ylim = c(600, 720)) # Range of y-axis (from 600 to 720) -->
+<!-- # Add line with intercept 695 and slope -2 to the plot  -->
+<!-- abline(695,-2,  -->
+<!--        col = "gray", # Make the line gray -->
+<!--        lwd = 3) # Set linewidth to 3 -->
+<!-- # Add line with intercept 713 and slope -3 to the plot  -->
+<!-- abline(mean(CASchools$Score)+3*mean(CASchools$STR),-3, -->
+<!--        col = "red", # Make the line red -->
+<!--        lwd = 3) # Set linewidth to 3 -->
+<!-- # Add fitted values to the plot -->
+<!-- points(CASchools$STR,713 - 3*CASchools$STR, -->
+<!--        col = "red") # Make the fitted values red -->
+<!-- ``` -->
+
+
+<!-- ## Predictions -->
+
+<!-- $$\mathrm{E}(Score|STR) = 713 - 3 STR$$ -->
+
+<!-- ```{r echo=FALSE, error=FALSE, warning=FALSE, out.width = "70%"} -->
+<!-- # Scatter plot of Score against STR -->
+<!-- plot(CASchools$STR,CASchools$Score,  -->
+<!--      col = "blue", # Color of data points -->
+<!--      xlab = "Student-teacher ratio",  # Label on x-axis -->
+<!--      ylab = "Test score",   # Label on y-axis -->
+<!--      xlim = c(10, 30),  # Range of x-axis (from 10 to 30) -->
+<!--      ylim = c(600, 720)) # Range of y-axis (from 600 to 720) -->
+<!-- abline(mean(CASchools$Score)+3*mean(CASchools$STR),-3, -->
+<!--        col = "red", -->
+<!--        lwd = 3) -->
+
+<!-- ``` -->
+
+<!-- ## Adding a line to a plot in R -->
+
+<!-- $$\mathrm{E}(Score|STR) = 713 - 3 STR$$ -->
+
+<!-- ```{r echo=TRUE, eval=FALSE, error=FALSE, warning=FALSE, out.width = "70%"} -->
+<!-- # Scatter plot of Score against STR -->
+<!-- plot(CASchools$STR,CASchools$Score,  -->
+<!--      col = "blue", # Color of data points -->
+<!--      xlab = "Student-teacher ratio",  # Label on x-axis -->
+<!--      ylab = "Test score",   # Label on y-axis -->
+<!--      xlim = c(10, 30),  # Range of x-axis (from 10 to 30) -->
+<!--      ylim = c(600, 720)) # Range of y-axis (from 600 to 720) -->
+<!-- # Add line with intercept 713 and slope -3 to the plot  -->
+<!-- abline(713,-3, -->
+<!--        col = "red", # Make the line red -->
+<!--        lwd = 3) # Set linewidth to 3 -->
+<!-- ``` -->
+
+
+
+<!-- ## Fitted values and residuals -->
+
+<!-- $$\hat{Score}_i = 713 - 3 STR_i$$ -->
+<!-- $$\hat{u}_i = Y_i - \hat{Y}_i; \quad i=1,\ldots,n$$ -->
+
+<!-- - $\hat{u}_i$ is the sample counterpart to the error $u_i$ -->
+
+## Fitted values and residuals
+
+$$\widehat{Score}_i = 713 - 3 STR_i$$
+$$\widehat{u}_i = Score_i - (713 - 3 STR_i)$$
+```{r echo=FALSE, error=FALSE, warning=FALSE}
+# Scatter plot of Score against STR
+plot(CASchools$STR,CASchools$Score, 
+     col = "blue", # Color of data points
+     xlab = "Student-teacher ratio",  # Label on x-axis
+     ylab = "Test score",   # Label on y-axis
+     xlim = c(10, 30),  # Range of x-axis (from 10 to 30)
+     ylim = c(600, 720)) # Range of y-axis (from 600 to 720)
+# Add line with intercept 695 and slope -2 to the plot 
+abline(695,-2, 
+       col = "gray", # Make the line gray
+       lwd = 3) # Set linewidth to 3
+# Add line with intercept 713 and slope -3 to the plot 
+abline(mean(CASchools$Score)+3*mean(CASchools$STR),-3,
+       col = "red", # Make the line red
+       lwd = 3) # Set linewidth to 3
+# Add fitted values to the plot
+points(CASchools$STR,713 - 3*CASchools$STR,
+       col = "red") # Make the fitted values red
+# Connect points (24,popregfct(24)) and (24,676.85) by an arrow
+arrows(x0 = 24, y0 = 713 - 3*24, x1 = 24, y1 = 676.85, 
+       code = 3, # Arrow head in both ends
+       lwd = 3, # Set linewidth to 3
+       col = "pink") # Make arrow green
+# Connect points (15,popregfct(15)) and (15,635.45) by an arrow
+arrows(x0 = 15.25, y0 = 713 - 3*15.25, x1 = 15.25, y1 = 635.45, 
+       code = 3, # Arrow head in both ends
+       lwd = 3, # Set linewidth to 3
+       col = "pink") # Make arrow green
+```
+
+# The OLS estimator
+
+## The OLS estimator
+
+- The OLS estimator finds regression coefficients that puts the fitted regression line as close to the data as possible
+
+- The distance between the regression line and the data is measured by the sum of squared residuals 
+
+- Formally, the OLS estimators $\widehat{\beta}_0$ and $\widehat{\beta}_1$ solve
+
+  $$\min_{\hat{\beta}_0,\hat{\beta}_1} \sum_{i=1}^n \widehat{u}_i^2$$
+  
+  where $\widehat{u}_i = Score_i -\widehat{\beta}_0  - \widehat{\beta}_1 STR_i$.
+  
+## OLS estimators of $\beta_0$ and $\beta_1$
+
+- The OLS estimator of $\beta_1$:
+
+  $$\hat{\beta}_1 = \frac{\sum_{i=1}^n (STR_i-\overline{STR})(Score_i-\overline{Score})}{\sum_{i=1}^n (STR_i-\overline{STR})^2}$$ 
+
+- The OLS estimator of $\beta_0$:
+
+  $$\hat{\beta}_0 = \overline{Score} - \hat{\beta}_1 \overline{STR}$$
+
+- An estimator is a rule that tells you how to compute estimates from a sample. An estimator is a random variable
+
+- An estimate is obtained by applying the estimator to a specific sample. An estimate is a fixed number.
+
+
+# Implementing the OLS estimator in R
+
+## OLS estimates
+
+```{r, echo=TRUE, eval=TRUE, error=FALSE, warning=FALSE}
+# Estimate b0,b1 in Score = b0 + b1 STR + u by OLS; 
+# then assign output to lm1
+lm1 <- lm(Score ~ STR, data = CASchools) 
+lm1 # Print output to console
+```
+
+## Scatter plot with sample regression function
+OLS sample regression function $=698.93 -2.28 STR$
+```{r echo=FALSE, error=FALSE, warning=FALSE}
+# Scatter plot of Score against STR
+plot(CASchools$STR,CASchools$Score, 
+     col = "blue", # Color of data points
+     xlab = "Student-teacher ratio",  # Label on x-axis
+     ylab = "Test score",   # Label on y-axis
+     xlim = c(10, 30),  # Range of x-axis (from 10 to 30)
+     ylim = c(600, 720)) # Range of y-axis (from 600 to 720)
+# Add line with intercept 695 and slope -2 to the plot 
+abline(695,-2, 
+       col = "gray", # Make the line gray
+       lwd = 3) # Set linewidth to 3
+# Add sample regression function to the plot
+abline(lm1,
+       col = "red", # Make the line red
+       lwd = 3) # Set linewidth to 3
+```
+
+## Adding sample regression function to plot in R
+
+```{r echo=TRUE, eval = FALSE, error=FALSE, warning=FALSE}
+# Scatter plot of Score against STR
+plot(CASchools$STR,CASchools$Score, 
+     col = "blue", # Color of data points
+     xlab = "Student-teacher ratio",  # Label on x-axis
+     ylab = "Test score",   # Label on y-axis
+     xlim = c(10, 30),  # Range of x-axis (from 10 to 30)
+     ylim = c(600, 720)) # Range of y-axis (from 600 to 720)
+# Add line with intercept 695 and slope -2 to the plot 
+abline(695,-2, 
+       col = "gray", # Make the line gray
+       lwd = 3) # Set linewidth to 3
+# Add sample regression function to the plot
+abline(lm1,
+       col = "red", # Make the line red
+       lwd = 3) # Set linewidth to 3
+```
+
+# Summary
+
+## Summary
+
+- The simple regression model relates the dependent variable $Score$ to a regressor $STR$ and an error term $u$
+
+$$Score_i = \beta_0 + \beta_1 STR_i + u_i$$
+
+- The OLS estimators picks out the "best line" in a scatter by minimizing the sum of squared residuals, $\sum_{i=1}^n \widehat{u}_i^2$.
+
+<!-- - The OLS estimator $\hat{\beta}_1$ of the coefficient on $STR$ is the sample covariance between $Score$ and $STR$ divided by the sample variance of $STR$ -->
+
+- Coming weeks: discuss the statistical properties of the OLS estimator and use it in practice
+
